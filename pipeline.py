@@ -1,5 +1,5 @@
 import torch
-from transformers import pipeline, MBartForConditionalGeneration, MBartTokenizer
+from transformers import pipeline
 import re
 
 def measure_time(func):
@@ -14,20 +14,14 @@ def measure_time(func):
 
 class Pipeline(object):
 
-    def __init__(self, translator_id, summarizer_id):
-
-        model = MBartForConditionalGeneration.from_pretrained(translator_id)
-        tokenizer = MBartTokenizer.from_pretrained(translator_id)
-        self.translator = pipeline("translation_hi_to_en", model=model, tokenizer=tokenizer)
-        
-        model = MBartForConditionalGeneration.from_pretrained(summarizer_id)
-        tokenizer = MBartTokenizer.from_pretrained(summarizer_id)
-        self.summarizer = pipeline("summarization", model=model, tokenizer=tokenizer)
+    def __init__(self, translator, summarizer):
+        self.translator = pipeline("translation_hi_to_en", model=translator["model"], tokenizer=translator["tokenizer"])
+        self.summarizer = pipeline("summarization", model=summarizer["model"], tokenizer=summarizer["tokenizer"])
 
     @measure_time
     def __call__(self, paragraph:str, min_length:int, max_length:int):
 
-        inputs = re.split("[.?]", paragraph)
+        inputs = re.split("[.?|]", paragraph)
         while "" in inputs: inputs.remove("")
         translation = self.translator(inputs, return_text=True)
         translation = [t["translation_text"] for t in translation]
@@ -37,4 +31,4 @@ class Pipeline(object):
         summary = self.summarizer(inputs, return_text=True, min_length=min_length, max_length=max_length)
         del self.summarizer
 
-        return [s["summary_text"] for s in summary]
+        return [s["summary_text"] for s in summary], translation
